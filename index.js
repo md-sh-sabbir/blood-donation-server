@@ -27,6 +27,7 @@ async function run() {
 
     const db = client.db("blood_bank");
     const usersCollection = db.collection("users");
+    const bloodRequestsCollection = db.collection('donation_requests')
 
     app.post('/users', async(req, res) => {
         const userInfo = req.body 
@@ -34,6 +35,37 @@ async function run() {
         userInfo.role = userInfo.role || 'donor'
         const result = await usersCollection.insertOne(userInfo)
         res.send(result)
+    })
+
+    app.get('/user/:email', async(req, res) => {
+        const email = req.params.email
+        const query={}
+        if(email){
+            query.email = email
+        }
+
+        const result = await usersCollection.findOne(query)
+        res.send(result)
+    })
+
+
+    app.get("/user/role/:email", async(req, res) => {
+        const email = req.params.email 
+        const query = {}
+        if(email){
+            query.email = email
+        }
+
+        const result = await usersCollection.findOne(query)
+        res.send({role: result?.role})
+    })
+
+    app.post('/add-request', async(req, res) => {
+        const data = req.body
+        data.createdAt = new Date() 
+        const result = await bloodRequestsCollection.insertOne(data)
+        res.send(result)
+
     })
 
 
