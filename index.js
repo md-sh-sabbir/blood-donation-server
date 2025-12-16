@@ -1,7 +1,7 @@
 const express = require('express')
 const app = express()
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 3000
 
 app.use(cors())
@@ -68,6 +68,47 @@ async function run() {
 
     })
 
+    app.get('/all-donation-requests', async(req, res) => {
+      const cursor = bloodRequestsCollection.find()
+      const result = await cursor.toArray()
+      res.send(result)
+    })
+
+
+    app.patch('/donation-requests/:id', async(req, res) => {
+      const id = req.params.id
+
+      const query = {_id: new ObjectId(id)}
+      const update = {
+        $set: {
+          donationStatus: "inprogress",
+        },
+      };
+
+      const result = await bloodRequestsCollection.updateOne(query, update)
+      res.send(result)
+    })
+
+    app.get('/my-donation-requests/:email', async(req, res) => {
+      const email = req.params.email 
+      const size = Number(req.query.size)
+      const page = Number(req.query.page)
+
+      const query = {}
+      
+      if(email){
+        query.requesterEmail = email
+      }
+      const result = await bloodRequestsCollection
+      .find(query)
+      .limit(size)
+      .skip(size*page)
+      .toArray()
+
+      const totalRequest = await bloodRequestsCollection.countDocuments(query)
+
+      res.send({request: result, totalRequest})
+    })
 
 
     // Connect the client to the server	(optional starting in v4.7)
