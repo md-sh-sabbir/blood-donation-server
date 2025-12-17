@@ -37,6 +37,12 @@ async function run() {
         res.send(result)
     })
 
+    app.get('/users', async(req, res) => {
+      const cursor = usersCollection.find()
+      const result = await cursor.toArray()
+      res.send(result)
+    })
+
     app.get('/user/:email', async(req, res) => {
         const email = req.params.email
         const query={}
@@ -58,6 +64,28 @@ async function run() {
 
         const result = await usersCollection.findOne(query)
         res.send({role: result?.role})
+    })
+
+    app.get('/users/:email', async(req, res) => {
+      const email = req.params.email 
+      const query = {email: email}
+      const result = await usersCollection.findOne(query)
+      res.send(result)
+    })
+
+    app.patch('/update/user/status', async(req, res) => {
+      const {email, status} = req.query
+      const query = {email: email}
+
+      const updateStatus = {
+        $set: {
+          status: status
+        }
+      }
+
+      const result = await usersCollection.updateOne(query, updateStatus)
+
+      res.send(result)
     })
 
     app.post('/add-request', async(req, res) => {
@@ -107,6 +135,20 @@ async function run() {
 
       const totalRequest = await bloodRequestsCollection.countDocuments(query)
 
+      res.send({request: result, totalRequest})
+    })
+
+    app.get('/admin-all-donation-requests', async(req, res) => { 
+      const size = Number(req.query.size)
+      const page = Number(req.query.page)
+
+      const result = await bloodRequestsCollection
+      .find()
+      .limit(size)
+      .skip(size*page)
+      .toArray()
+
+      const totalRequest = await bloodRequestsCollection.countDocuments()
       res.send({request: result, totalRequest})
     })
 
