@@ -9,8 +9,35 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+const admin = require("firebase-admin");
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
+  "utf8"
+);
+const serviceAccount = JSON.parse(decoded);
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+const verifyFBToken = async (req, res, next) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).send({ message: "unauthorize access" });
+  }
+  try {
+    const idToken = token.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    console.log("decoded info", decoded);
+    req.decoded_email = decoded.email;
+    next();
+  } catch (error) {
+    return res.status(401).send({ message: "unauthorize access" });
+  }
+};
+
 const uri =
-  "mongodb+srv://blood-bank:ZLRYM7yQEbFkLwaa@cluster0.enlhfah.mongodb.net/?appName=Cluster0";
+  `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.enlhfah.mongodb.net/?appName=Cluster0`;
 
 // blood-bank
 // ZLRYM7yQEbFkLwaa
@@ -233,31 +260,38 @@ async function run() {
 
       const transactionId = session.payment_intent;
 
-      const isPaymentExist = await paymentsCollection.findOne({transactionId})
+      const isPaymentExist = await paymentsCollection.findOne({
+        transactionId,
+      });
 
-      if(isPaymentExist){
-        return
+      if (isPaymentExist) {
+        return;
       }
 
-      if(session.payment_status == 'paid'){
+      if (session.payment_status == "paid") {
         const paymentInfo = {
-          amount: session.amount_total/100,
+          amount: session.amount_total / 100,
           currency: session.currency,
           donorEmail: session.customer_email,
           transactionId,
           payment_status: session.payment_status,
-          paidAt: new Date()
-        }
+          paidAt: new Date(),
+        };
 
-        const result = await paymentsCollection.insertOne(paymentInfo)
-        return res.send(result)
+        const result = await paymentsCollection.insertOne(paymentInfo);
+        return res.send(result);
       }
     });
 
+    app.get("/payments", async (req, res) => {
+      const result = await paymentsCollection.find().toArray();
+      res.send(result);
+    });
+
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
